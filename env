@@ -1,0 +1,7 @@
+DB_NAME=bidflow_db
+DB_USER=bidflow_user
+DB_PASSWORD=jozyToby-24001
+DB_HOST=62.72.5.50
+DB_PORT=5432
+SECRET_KEY=your-django-secret-key
+DEBUG=True

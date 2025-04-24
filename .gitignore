@@ -1,0 +1,65 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+.env/
+venv/
+env/
+ENV/
+.venv/
+
+# Django-related
+*.log
+*.pot
+*.pyc
+*.sqlite3
+db.sqlite3
+media/
+staticfiles/
+
+# Secret config
+.env.dev
+.env.local
+.env.production
+*.env
+
+# IDE files
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# System files
+.DS_Store
+Thumbs.db
+
+# pip
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Test output
+htmlcov/
+.coverage
+.tox/
+.nox/
+.pytest_cache/
+
+# Coverage reports
+coverage.xml
+*.cover
+*.log
+
+# Migrations (if regenerating fresh DBs)
+**/migrations/*.py
+**/migrations/*.pyc
+!*/migrations/__init__.py
+
+# Docker (optional)
+docker-compose.override.yml
+.dockerignore
+
+# GCP / cloud credentials
+*.json
+gcloud-service-account.json
