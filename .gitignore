@@ -52,7 +52,6 @@ coverage.xml
 *.log
 
 # Migrations (if regenerating fresh DBs)
-**/migrations/*.py
 **/migrations/*.pyc
 !*/migrations/__init__.py
 
