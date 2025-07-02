@@ -1,6 +1,9 @@
 from rest_framework import viewsets, permissions
 from .models import Bid
 from .serializers import BidSerializer
+from django.db import IntegrityError
+from rest_framework import serializers
+
 
 class BidViewSet(viewsets.ModelViewSet):
     """
@@ -15,8 +18,14 @@ class BidViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def perform_create(self, serializer):
-        serializer.save(submitted_by=self.request.user)
-
+        try:
+            serializer.save(submitted_by=self.request.user)
+        except IntegrityError:
+            # Return a clear JSON error response
+            raise serializers.ValidationError({
+                "detail": "You have already submitted a bid for this tender. Multiple submissions are not allowed."
+            })
+            
     def get_queryset(self):
         """
         Optionally filter bids by the current user.

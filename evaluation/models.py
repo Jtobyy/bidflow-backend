@@ -19,6 +19,7 @@ class Evaluation(models.Model):
 
     comments = models.TextField(blank=True)
     submitted_at = models.DateTimeField(auto_now_add=True)
+    compliance_status = models.BooleanField(default=False)
     
     class Meta:
         unique_together = ('bid', 'evaluator')  # One evaluation per bid per evaluator

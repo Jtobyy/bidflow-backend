@@ -20,7 +20,7 @@ class Bid(models.Model):
     """
     tender = models.ForeignKey(Tender, on_delete=models.CASCADE, related_name='bids')
     submitted_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='bids')
-    documents = models.FileField(upload_to='bids/documents/', blank=True, null=True)
+    document = models.FileField(upload_to='bids/documents/', blank=True, null=True)
     price = models.DecimalField(max_digits=12, decimal_places=2)
     submitted_at = models.DateTimeField(auto_now_add=True)
     status = models.CharField(
