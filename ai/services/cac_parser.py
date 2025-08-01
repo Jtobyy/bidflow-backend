@@ -447,7 +447,13 @@ def extract_cac_fields(image_path):
             "company_name": company_name,
             "date_of_incorporation": date_of_incorp,
             "verification_status": "not_verified",
-            "verification_details": {}
+            "verification_details": {
+                "verification_checks": {
+                    "cac_status_active": None,
+                    "cac_check_verified": None,
+                    "company_name_match": None
+                }
+            }
         }
 
         # Verify with QoreID if we have a registration number
@@ -456,44 +462,95 @@ def extract_cac_fields(image_path):
             verification_response = qoreid_client.verify_cac(registration_info)
             
             if verification_response and "error" not in verification_response:
-                # Successful verification
+                # Successful API response - now check verification conditions
                 cac_data = verification_response.get("cac", {})
                 verified_company_name = cac_data.get("companyName", "").strip()
                 verified_reg_number = cac_data.get("rcNumber", "")
                 company_status = cac_data.get("status", "")
                 registration_date = cac_data.get("registrationDate", "")
+                cac_check = verification_response.get("summary", {}).get("cac_check", "")
                 
                 # Compare company names
                 name_comparison = compare_company_names(company_name, verified_company_name)
                 
-                result.update({
-                    "verification_status": "verified",
-                    "verification_details": {
-                        "qoreid_response": verification_response,
-                        "verified_company_name": verified_company_name,
-                        "verified_registration_number": verified_reg_number,
-                        "company_status": company_status,
-                        "verified_registration_date": registration_date,
-                        "name_match": name_comparison,
-                        "overall_validity": (
-                            name_comparison["match"] and 
-                            company_status.upper() == "ACTIVE" and
-                            verification_response.get("summary", {}).get("cac_check") == "verified"
-                        )
-                    }
-                })
+                # Perform verification checks
+                is_active = company_status.upper() == "ACTIVE"
+                is_verified = cac_check == "verified"
+                name_matches = name_comparison["match"]
                 
-                print(f"✅ Verification successful!")
+                # Prepare verification details
+                verification_details = {
+                    "qoreid_response": verification_response,
+                    "verified_company_name": verified_company_name,
+                    "verified_registration_number": verified_reg_number,
+                    "company_status": company_status,
+                    "verified_registration_date": registration_date,
+                    "name_match": name_comparison,
+                    "verification_checks": {
+                        "cac_status_active": {
+                            "passed": is_active,
+                            "message": "Company status is ACTIVE" if is_active else "Company status is not ACTIVE"
+                        },
+                        "cac_check_verified": {
+                            "passed": is_verified,
+                            "message": "CAC check is verified" if is_verified else "CAC check is not verified"
+                        },
+                        "company_name_match": {
+                            "passed": name_matches,
+                            "message": name_comparison["reason"]
+                        }
+                    },
+                    "overall_validity": all([is_active, is_verified, name_matches])
+                }
+                
+                # Determine verification status
+                if verification_details["overall_validity"]:
+                    result.update({
+                        "verification_status": "verified",
+                        "verification_details": verification_details
+                    })
+                    print(f"✅ Verification successful! All checks passed")
+                else:
+                    # Identify which checks failed
+                    failed_checks = []
+                    if not is_active:
+                        failed_checks.append("company status not ACTIVE")
+                    if not is_verified:
+                        failed_checks.append("CAC check not verified")
+                    if not name_matches:
+                        failed_checks.append("company name mismatch")
+                    
+                    result.update({
+                        "verification_status": "verification_failed",
+                        "verification_details": verification_details
+                    })
+                    print(f"⚠️ Verification failed: {', '.join(failed_checks)}")
+                
                 print(f"   Verified Company: {verified_company_name}")
-                print(f"   Status: {company_status}")
+                print(f"   Status: {company_status} (Active: {is_active})")
+                print(f"   CAC Check: {cac_check} (Verified: {is_verified})")
                 print(f"   Name Match: {name_comparison['match']} ({name_comparison['similarity_score']:.1%})")
                 
             elif verification_response and "error" in verification_response:
-                # Verification failed
+                # Verification failed with error message
                 result.update({
                     "verification_status": "verification_failed",
                     "verification_details": {
-                        "error": verification_response["error"]
+                        "error": verification_response["error"],
+                        "verification_checks": {
+                            "cac_status_active": {
+                                "passed": False,
+                                "message": "Verification failed before status check"
+                            },
+                            "cac_check_verified": {
+                                "passed": False,
+                                "message": "Verification failed before check"
+                            },
+                            "company_name_match": {
+                                "passed": False,
+                                "message": "Verification failed before name check"
+                            }
+                        }
                     }
                 })
                 print(f"❌ Verification failed: {verification_response['error']}")
@@ -502,7 +559,21 @@ def extract_cac_fields(image_path):
                 result.update({
                     "verification_status": "verification_unavailable",
                     "verification_details": {
-                        "error": "QoreID service unavailable"
+                        "error": "QoreID service unavailable",
+                        "verification_checks": {
+                            "cac_status_active": {
+                                "passed": False,
+                                "message": "Service unavailable"
+                            },
+                            "cac_check_verified": {
+                                "passed": False,
+                                "message": "Service unavailable"
+                            },
+                            "company_name_match": {
+                                "passed": False,
+                                "message": "Service unavailable"
+                            }
+                        }
                     }
                 })
                 print(f"⚠️ QoreID service unavailable")
@@ -516,5 +587,21 @@ def extract_cac_fields(image_path):
     except Exception as e:
         return {
             "error": str(e),
-            "verification_status": "extraction_failed"
+            "verification_status": "extraction_failed",
+            "verification_details": {
+                "verification_checks": {
+                    "cac_status_active": {
+                        "passed": False,
+                        "message": "Extraction failed"
+                    },
+                    "cac_check_verified": {
+                        "passed": False,
+                        "message": "Extraction failed"
+                    },
+                    "company_name_match": {
+                        "passed": False,
+                        "message": "Extraction failed"
+                    }
+                }
+            }
         }

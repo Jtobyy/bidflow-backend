@@ -20,7 +20,6 @@ class Bid(models.Model):
     """
     tender = models.ForeignKey(Tender, on_delete=models.CASCADE, related_name='bids')
     submitted_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='bids')
-    document = models.FileField(upload_to='bids/documents/', blank=True, null=True)
     price = models.DecimalField(max_digits=12, decimal_places=2)
     submitted_at = models.DateTimeField(auto_now_add=True)
     status = models.CharField(
@@ -40,3 +39,37 @@ class Bid(models.Model):
 
     def __str__(self):
         return f"Bid by {self.submitted_by.username} for {self.tender.title}"
+
+class BidDocument(models.Model):
+    DOCUMENT_TYPE_CHOICES = [
+        ('BID', 'BID'),
+        ('CAC', 'CAC'),
+        ('TIN', 'TIN'),
+        ('TCC', 'TCC'),
+        ('ISO_PECB', 'ISO PECB'),
+        ('OTHER', 'Other'),
+    ]
+
+    bid = models.ForeignKey('Bid', on_delete=models.CASCADE, related_name='documents')
+    document_type = models.CharField(
+        max_length=50,
+        choices=DOCUMENT_TYPE_CHOICES,
+        help_text="Type of document (e.g., CAC, TIN, etc. Use 'Other' if not listed)"
+    )
+    custom_document_name = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        help_text="Only required if document_type is 'OTHER'"
+    )
+    file = models.FileField(upload_to='bids/documents/')
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+    extracted_data = models.JSONField(null=True, blank=True)  # parsed fields
+    verification_status = models.CharField(
+        max_length=20,
+        choices=[('pending', 'Pending'), ('verified', 'Verified'), ('failed', 'Failed')],
+        default='pending'
+    )
+
+    def __str__(self):
+        return f"{self.document_type or 'Other'} - {self.custom_document_name or ''}"

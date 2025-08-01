@@ -6,7 +6,7 @@ class CACParserTest(unittest.TestCase):
     def setUp(self):
         # Setup test file paths
         self.test_files = {
-            'rc_sample': "ai/datasets/nigeria/CAC/cac_2.JPG",
+            'rc_sample': "ai/datasets/nigeria/CAC/cac_6.JPG",
             'bn_sample': "ai/datasets/nigeria/CAC/cac_7.JPG",
             # 'trustee_sample': "ai/datasets/nigeria/CAC/trustee_sample.jpg"
         }
