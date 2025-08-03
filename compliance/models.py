@@ -7,6 +7,7 @@ class ComplianceCheck(models.Model):
     missing_documents = models.JSONField(default=list, blank=True, null=True)
     failed_documents = models.JSONField(default=list, blank=True, null=True)
     document_scores = models.JSONField(default=dict, blank=True, null=True)
+    evaluation = models.JSONField(default=dict, blank=True, null=True) 
     proposal_score = models.PositiveIntegerField(default=0)
     notes = models.TextField(blank=True)
     verified_at = models.DateTimeField(auto_now_add=True)

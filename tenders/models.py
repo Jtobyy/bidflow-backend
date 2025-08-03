@@ -35,6 +35,9 @@ class Tender(models.Model):
         default=list,
         help_text="List of required document types (e.g., CAC, TIN, TAX_CERT, TCC, ISO_PECB)"
     )
+    
+    tender_document = models.FileField(upload_to='tender_docs/', null=True, blank=True)
+    extra_documents = models.FileField(upload_to='tender_extras/', null=True, blank=True)
 
     def __str__(self):
         return self.title

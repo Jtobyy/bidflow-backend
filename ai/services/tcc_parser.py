@@ -78,12 +78,12 @@ def is_certificate_expired(expiration_date: str) -> bool:
         current_date = datetime.now()
         return current_date > exp_date
     except ValueError:
-        print(f"DEBUG: Invalid date format: {expiration_date}")
+        # print(f"DEBUG: Invalid date format: {expiration_date}")
         return False
 
 def extract_tcc_fields(text: str) -> Dict[str, str]:
     """Extract fields like TIN, taxpayer name, RC number, expiration date"""
-    print(f"DEBUG: Processing text:\n{text}")
+    # print(f"DEBUG: Processing text:\n{text}")
     
     lines = [l.strip() for l in text.splitlines() if l.strip()]
     tin_number, taxpayer_name, rc_number, expiration_date = None, None, None, None
@@ -99,7 +99,7 @@ def extract_tcc_fields(text: str) -> Dict[str, str]:
         matches = re.findall(pattern, text, re.IGNORECASE | re.DOTALL)
         if matches:
             tin_number = matches[0]
-            print(f"DEBUG: Found TIN using pattern '{pattern}': {tin_number}")
+            # print(f"DEBUG: Found TIN using pattern '{pattern}': {tin_number}")
             break
 
     # Find label positions for tabular OCR format
@@ -118,14 +118,14 @@ def extract_tcc_fields(text: str) -> Dict[str, str]:
         elif re.search(r'This Certificate Expires on', line, re.IGNORECASE):
             label_positions['expiration'] = i
 
-    print(f"DEBUG: Found label positions: {label_positions}")
+    # print(f"DEBUG: Found label positions: {label_positions}")
 
     # Extract company name based on tabular format
     if 'company_name' in label_positions:
         company_label_pos = label_positions['company_name']
         for i in range(company_label_pos + 1, min(len(lines), company_label_pos + 15)):
             line = lines[i]
-            print(f"DEBUG: Checking line {i} for company name: '{line}'")
+            # print(f"DEBUG: Checking line {i} for company name: '{line}'")
             if line.startswith(':') and re.search(r'[A-Za-z]', line):
                 potential_name = line[1:].strip()
                 if len(potential_name) > 3 and not re.match(r'^\d+(-\d+)*$', potential_name):
@@ -135,7 +135,7 @@ def extract_tcc_fields(text: str) -> Dict[str, str]:
                         next_line = lines[i + 1].strip()
                         if next_line and re.search(r'[A-Za-z]', next_line):
                             taxpayer_name += ' ' + next_line
-                    print(f"DEBUG: Extracted company name: '{taxpayer_name}'")
+                    # print(f"DEBUG: Extracted company name: '{taxpayer_name}'")
                     break
 
     # Extract RC number based on tabular format
@@ -143,12 +143,12 @@ def extract_tcc_fields(text: str) -> Dict[str, str]:
         rc_label_pos = label_positions['rc_no']
         for i in range(rc_label_pos + 1, min(len(lines), rc_label_pos + 10)):
             line = lines[i]
-            print(f"DEBUG: Checking line {i} for RC number: '{line}'")
+            # print(f"DEBUG: Checking line {i} for RC number: '{line}'")
             if line.startswith(':'):
                 potential_rc = line[1:].strip()
                 if re.match(r'^\d+$', potential_rc):
                     rc_number = potential_rc
-                    print(f"DEBUG: Extracted RC number: '{rc_number}'")
+                    # print(f"DEBUG: Extracted RC number: '{rc_number}'")
                     break
 
     # Extract expiration date based on tabular format
@@ -156,12 +156,12 @@ def extract_tcc_fields(text: str) -> Dict[str, str]:
         exp_label_pos = label_positions['expiration']
         for i in range(exp_label_pos + 1, min(len(lines), exp_label_pos + 10)):
             line = lines[i]
-            print(f"DEBUG: Checking line {i} for expiration date: '{line}'")
+            # print(f"DEBUG: Checking line {i} for expiration date: '{line}'")
             if line.startswith(':'):
                 potential_date = line[1:].strip()
                 if re.match(r'^\d{4}-\d{2}-\d{2}$', potential_date):
                     expiration_date = potential_date
-                    print(f"DEBUG: Extracted expiration date: '{expiration_date}'")
+                    # print(f"DEBUG: Extracted expiration date: '{expiration_date}'")
                     break
 
     # Fallback patterns for missing fields
@@ -169,21 +169,21 @@ def extract_tcc_fields(text: str) -> Dict[str, str]:
         company_match = re.search(r'Name of Company.*?:\s*([A-Z\s]+(?:LIMITED|LTD|COMPANY|CORP|INC))', text, re.IGNORECASE | re.DOTALL)
         if company_match:
             taxpayer_name = company_match.group(1).strip()
-            print(f"DEBUG: Extracted company name via fallback pattern: '{taxpayer_name}'")
+            # print(f"DEBUG: Extracted company name via fallback pattern: '{taxpayer_name}'")
 
     if not rc_number:
         rc_match = re.search(r'RC\s*No.*?:\s*(\d+)', text, re.IGNORECASE | re.DOTALL)
         if rc_match:
             rc_number = rc_match.group(1)
-            print(f"DEBUG: Extracted RC number via fallback pattern: '{rc_number}'")
+            # print(f"DEBUG: Extracted RC number via fallback pattern: '{rc_number}'")
 
     if not expiration_date:
         exp_match = re.search(r'This Certificate Expires on.*?:\s*(\d{4}-\d{2}-\d{2})', text, re.IGNORECASE | re.DOTALL)
         if exp_match:
             expiration_date = exp_match.group(1)
-            print(f"DEBUG: Extracted expiration date via fallback pattern: '{expiration_date}'")
+            # print(f"DEBUG: Extracted expiration date via fallback pattern: '{expiration_date}'")
 
-    print(f"DEBUG: Final extraction results:")
+    # print(f"DEBUG: Final extraction results:")
     print(f"  TIN: {tin_number}")
     print(f"  Name: {taxpayer_name}")
     print(f"  RC: {rc_number}")
@@ -226,7 +226,7 @@ def compare_names(extracted: str, verified: str) -> Dict[str, Any]:
 def extract_and_verify_tcc(image_path: str) -> Dict[str, Any]:
     try:
         text = detect_text_from_image(image_path)
-        print(f"text is {text}")
+        # print(f"text is {text}")
         extracted = extract_tcc_fields(text)
         
         if not extracted["is_valid_format"]:
@@ -248,20 +248,20 @@ def extract_and_verify_tcc(image_path: str) -> Dict[str, Any]:
 
         # Enhanced fallbacks for missing fields
         if not extracted["tin_number"]:
-            print("DEBUG: TIN not found, trying Ollama fallback...")
+            # print("DEBUG: TIN not found, trying Ollama fallback...")
             guess = query_ollama(text, "What is the TIN number? Look for a pattern like 8 digits, hyphen, 4 digits (e.g., 12345678-1234)")
             if guess:
-                print(f"DEBUG: Ollama response for TIN: {guess}")
+                # print(f"DEBUG: Ollama response for TIN: {guess}")
                 m = re.search(r'\b(\d{8}-\d{4})\b', guess)
                 if m:
                     extracted["tin_number"] = m.group(1)
-                    print(f"DEBUG: Extracted TIN from Ollama: {extracted['tin_number']}")
+                    # print(f"DEBUG: Extracted TIN from Ollama: {extracted['tin_number']}")
 
         if not extracted["taxpayer_name"]:
-            print("DEBUG: Name not found, trying Ollama fallback...")
+            # print("DEBUG: Name not found, trying Ollama fallback...")
             guess = query_ollama(text, "What is the company name or taxpayer name?")
             if guess:
-                print(f"DEBUG: Ollama response for name: {guess}")
+                # print(f"DEBUG: Ollama response for name: {guess}")
                 extracted["taxpayer_name"] = guess.strip()
 
         if not extracted["tin_number"]:

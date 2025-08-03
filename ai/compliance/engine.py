@@ -2,7 +2,7 @@
 
 import os
 from compliance.models import ComplianceCheck
-from bids.models import BidDocument
+from bids.models import BidDocument, Bid
 from tenders.models import Tender
 
 from ai.services.bid_parser import parse_bid_document
@@ -22,7 +22,8 @@ def run_compliance_check(bid):
         "failed_documents": [],
         "document_scores": {},
         "proposal_score": 0,
-        "notes": ""
+        "notes": "",
+        "evaluation": {}
     }
 
     # 1. Check for missing documents
@@ -47,18 +48,18 @@ def run_compliance_check(bid):
                 parsed = extract_and_verify_tcc(doc_path)
 
             elif doc_type == "ISO_PECB":
-                parsed = extract_and_verify_iso(doc_path)
+                parsed = extract_and_verify_pecb(doc_path)
 
             elif doc_type == "BID":
                 parsed = parse_bid_document(
                     bid_file_path=doc_path,
-                    tender_title=tender.title,
-                    tender_description=tender.description
+                    tender=tender,
                 )
                 doc.extracted_data = parsed
                 doc.verification_status = "verified" if parsed["score"] >= 60 else "failed"
                 doc.save()
                 result["proposal_score"] = parsed["score"]
+                result["evaluation"] = parsed.get("evaluation", {})
                 continue  # Skip common verification logic for BID
 
             else:
@@ -98,8 +99,27 @@ def run_compliance_check(bid):
             "failed_documents": result["failed_documents"],
             "document_scores": result["document_scores"],
             "proposal_score": result["proposal_score"],
-            "notes": "Auto-generated compliance evaluation"
+            "notes": "Auto-generated compliance evaluation",
+            "evaluation": result["evaluation"]
         }
     )
 
+    # Compute average document score
+    doc_scores = list(result["document_scores"].values())
+    avg_doc_score = sum(doc_scores) / len(doc_scores) if doc_scores else 0
+
+    # Combine with proposal score (e.g., 70% proposal, 30% docs)
+    final_score = 0.7 * result["proposal_score"] + 0.3 * avg_doc_score
+
+    # Save to Bid
+    bid.score = round(final_score, 2)
+    bid.save()
+
     return compliance
+
+def rank_bids_for_tender(tender_id):
+    bids = Bid.objects.filter(tender_id=tender_id, score__isnull=False).order_by('-score')
+
+    for index, bid in enumerate(bids, start=1):
+        bid.rank = index
+        bid.save()

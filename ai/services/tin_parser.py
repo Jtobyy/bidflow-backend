@@ -198,7 +198,7 @@ def extract_and_verify_tin(image_path: str) -> Dict[str, Any]:
     try:
         # Step 1: OCR text extraction
         text = detect_text_from_image(image_path)
-        print(f"format, {text}")
+        # print(f"format, {text}")
         
         # Step 2: Validate document format
         if not is_valid_tin_certificate(text):
