@@ -3,7 +3,7 @@ from django.core.management.base import BaseCommand
 from tenders.models import Tender
 from bids.models import Bid
 from ai.compliance.engine import run_compliance_check, rank_bids_for_tender
-
+from notifications.utils import notify_user
 
 class Command(BaseCommand):
     help = "Process all bids under a tender: verify documents, score proposals, and rank bids"
@@ -45,5 +45,12 @@ class Command(BaseCommand):
             self.stdout.write(f"   📝 Evaluation: {compliance.evaluation}")
             rank_bids_for_tender(tender_id)
             self.stdout.write(self.style.SUCCESS("🏆 Bids ranked by score."))
+
+            notify_user(
+                recipient=bid.submitted_by,
+                message=f"Your bid for '{tender.title}' was processed — result: {'✅ Compliant' if compliance.is_compliant else '❌ Not Compliant'}",
+                data={"type": "bid_processed", "bid_id": bid.id}
+            )
+
 
 

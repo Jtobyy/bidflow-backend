@@ -10,7 +10,7 @@ from ai.services.cac_parser import extract_cac_fields
 from ai.services.tin_parser import extract_and_verify_tin
 from ai.services.tcc_parser import extract_and_verify_tcc
 from ai.services.iso_pecb_parser import extract_and_verify_pecb
-
+from notifications.utils import notify_user
 
 def run_compliance_check(bid):
     tender: Tender = bid.tender
@@ -123,3 +123,9 @@ def rank_bids_for_tender(tender_id):
     for index, bid in enumerate(bids, start=1):
         bid.rank = index
         bid.save()
+
+    notify_user(
+        recipient=tender.created_by,
+        message=f"All bids for your tender '{tender.title}' have been processed and ranked.",
+        data={"type": "tender_ranking", "tender_id": tender.id}
+    )

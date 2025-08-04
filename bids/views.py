@@ -9,6 +9,9 @@ from rest_framework.decorators import action
 from rest_framework import status
 from compliance.models import ComplianceCheck
 from compliance.serializers import ComplianceCheckSerializer
+from notifications.utils import notify_user
+from decimal import Decimal, InvalidOperation
+
 
 
 class BidViewSet(viewsets.ModelViewSet):
@@ -50,6 +53,14 @@ class BidViewSet(viewsets.ModelViewSet):
 
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
+        tender = Tender.objects.get(pk=tender)
+
+        bid_user = request.user
+        notify_user(
+            recipient=procurer,
+            message=f"A new bid was submitted to your tender '{tender.title}'",
+            data={"type": "bid_submitted", "tender_id": tender.id, "bid_id": bid.id}
+        )
         return Response(serializer.data, status=201)
 
     def get_queryset(self):
@@ -71,18 +82,22 @@ class BidViewSet(viewsets.ModelViewSet):
         partial = kwargs.pop('partial', True)
         instance = self.get_object()
 
-        # Extract other flat fields if needed
         serializer = self.get_serializer(
             instance,
-            data={
-                **request.data,
-                'documents': documents
-            },
+            data={**request.data, 'documents': documents},
             partial=partial
         )
-
         serializer.is_valid(raise_exception=True)
         self.perform_update(serializer)
+
+        # Notify the procurer
+        procurer = instance.tender.created_by
+        notify_user(
+            recipient=procurer,
+            message=f"A bid was updated for your tender '{instance.tender.title}'",
+            data={"type": "bid_updated", "tender_id": instance.tender.id, "bid_id": instance.id}
+        )
+
         return Response(serializer.data)
 
     @action(detail=True, methods=['post'])
@@ -90,7 +105,31 @@ class BidViewSet(viewsets.ModelViewSet):
         bid = self.get_object()
         compliance = run_compliance_check(bid)
         serializer = ComplianceCheckSerializer(compliance)
+
+        notify_user(
+            recipient=bid.submitted_by,
+            message=f"Your bid for '{bid.tender.title}' was processed — result: {'✅ Compliant' if compliance.is_compliant else '❌ Not Compliant'}",
+            data={"type": "bid_compliance", "bid_id": bid.id}
+        )
+        
         return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    def destroy(self, request, *args, **kwargs):
+        bid = self.get_object()
+        tender = bid.tender
+        bid_id = bid.id
+        self.perform_destroy(bid)
+
+        # Notify the procurer
+        procurer = tender.created_by
+        notify_user(
+            recipient=procurer,
+            message=f"A bid was deleted from your tender '{tender.title}'",
+            data={"type": "bid_deleted", "tender_id": tender.id, "bid_id": bid_id}
+        )
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
 
 
 
