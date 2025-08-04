@@ -11,6 +11,8 @@ from compliance.models import ComplianceCheck
 from compliance.serializers import ComplianceCheckSerializer
 from notifications.utils import notify_user
 from decimal import Decimal, InvalidOperation
+from rest_framework.exceptions import ValidationError
+
 
 
 
@@ -36,15 +38,13 @@ class BidViewSet(viewsets.ModelViewSet):
             documents.append({
                 'file': request.FILES.get(f'documents[{i}][file]'),
                 'document_type': request.data.get(f'documents[{i}][document_type]'),
-                'custom_document_name': request.data.get(f'documents[{i}][custom_document_name]'),  # <-- add this
+                'custom_document_name': request.data.get(f'documents[{i}][custom_document_name]'),
             })
             i += 1
 
-        # Explicitly extract flat values
         tender = request.data.get('tender')
         price = request.data.get('price')
 
-        # Assemble clean data for serializer
         serializer = self.get_serializer(data={
             'tender': tender,
             'price': price,
@@ -52,7 +52,12 @@ class BidViewSet(viewsets.ModelViewSet):
         })
 
         serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
+
+        try:
+            self.perform_create(serializer)
+        except IntegrityError:
+            raise ValidationError({"detail": "You have already submitted a bid for this tender."})
+
         tender = Tender.objects.get(pk=tender)
 
         bid_user = request.user
@@ -61,7 +66,10 @@ class BidViewSet(viewsets.ModelViewSet):
             message=f"A new bid was submitted to your tender '{tender.title}'",
             data={"type": "bid_submitted", "tender_id": tender.id, "bid_id": bid.id}
         )
+
         return Response(serializer.data, status=201)
+
+
 
     def get_queryset(self):
         if self.request.user.is_superuser:
