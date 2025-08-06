@@ -1,6 +1,8 @@
 from django.db import models
 from django.contrib.auth import get_user_model
 from django.contrib.postgres.fields import ArrayField
+from django.utils import timezone
+from datetime import timedelta
 
 
 User = get_user_model()
@@ -38,6 +40,14 @@ class Tender(models.Model):
     
     tender_document = models.FileField(upload_to='tender_docs/', null=True, blank=True)
     extra_documents = models.FileField(upload_to='tender_extras/', null=True, blank=True)
+
+    @property
+    def is_open(self):
+        return self.status == 'published' and self.deadline > timezone.now()
+    
+    @property
+    def is_closed(self):
+        return self.status == 'closed' or (self.status == 'published' and self.deadline <= timezone.now())
 
     def __str__(self):
         return self.title

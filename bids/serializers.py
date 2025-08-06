@@ -1,5 +1,9 @@
 from rest_framework import serializers
 from .models import Bid, BidDocument
+from company.serializers import CompanySerializer
+from tenders.serializers import TenderSerializer
+from tenders.models import Tender
+
 
 class BidDocumentInlineSerializer(serializers.Serializer):
     document_type = serializers.ChoiceField(choices=[c[0] for c in BidDocument.DOCUMENT_TYPE_CHOICES])
@@ -21,14 +25,30 @@ class BidDocumentReadSerializer(serializers.ModelSerializer):
 class BidSerializer(serializers.ModelSerializer):
     documents = BidDocumentInlineSerializer(many=True, write_only=True, required=False)
     uploaded_documents = BidDocumentReadSerializer(source='documents', many=True, read_only=True)
+    company = CompanySerializer(source='submitted_by.company', read_only=True)
+    tender = serializers.PrimaryKeyRelatedField(
+        queryset=Tender.objects.all(),
+        write_only=False  # it can be used for both
+    )
+
 
     class Meta:
         model = Bid
         fields = [
-            'id', 'tender', 'submitted_by', 'price', 'submitted_at', 'status',
+            'id', 'tender', 'submitted_by', 'company', 'price', 'submitted_at', 'status',
             'documents', 'uploaded_documents', 'score', 'rank'
         ]
-        read_only_fields = ['id', 'submitted_by', 'submitted_at', 'status', 'uploaded_documents', 'score', 'rank']
+        read_only_fields = [
+            'id', 'submitted_by', 'company', 'submitted_at', 'status',
+            'uploaded_documents', 'score', 'rank'
+        ]
+
+    def to_representation(self, instance):
+        # Start with the default representation (IDs etc)
+        ret = super().to_representation(instance)
+        # Now override 'tender' to serialize as object
+        ret['tender'] = TenderSerializer(instance.tender, context=self.context).data
+        return ret
 
     def create(self, validated_data):
         documents_data = validated_data.pop('documents', [])
@@ -57,3 +77,12 @@ class BidSerializer(serializers.ModelSerializer):
                 BidDocument.objects.create(bid=instance, **doc_data)
 
         return instance
+    
+    def get_company(self, obj):
+        # Handle missing user or missing company
+        if obj.submitted_by and hasattr(obj.submitted_by, "company") and obj.submitted_by.company:
+            return {
+                "id": obj.submitted_by.company.id,
+                "name": obj.submitted_by.company.name
+            }
+        return None

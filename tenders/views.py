@@ -26,6 +26,14 @@ class TenderViewSet(viewsets.ModelViewSet):
     filter_backends = [filters.SearchFilter]
     search_fields = ['title', 'description', 'id', 'created_by__username']
 
+    def get_queryset(self):
+        queryset = Tender.objects.all().order_by('-created_at')
+        status_param = self.request.query_params.get("status")
+        if status_param:
+            statuses = [s.strip() for s in status_param.split(',')]
+            queryset = queryset.filter(status__in=statuses)
+        return queryset
+
     def perform_create(self, serializer):
         tender = serializer.save(created_by=self.request.user)
         # Notify the creator    
@@ -34,7 +42,7 @@ class TenderViewSet(viewsets.ModelViewSet):
             message=f"Tender '{tender.title}' was created successfully.",
             data={"type": "tender_created", "tender_id": tender.id}
         )
-    
+
     @action(detail=True, methods=["post"], url_path="process_bids")
     def process_bids(self, request, pk=None):
         tender = self.get_object()

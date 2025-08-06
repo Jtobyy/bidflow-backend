@@ -4,7 +4,7 @@ from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):
-    list_display = ('username', 'email', 'role', 'company', 'is_staff')
+    list_display = ('username', 'email', 'company', 'is_staff')
     fieldsets = BaseUserAdmin.fieldsets + (
-        ('Extra Info', {'fields': ('avatar', 'role', 'company')}),
+        ('Extra Info', {'fields': ('avatar', 'company')}),
     )
