@@ -32,6 +32,13 @@ class Tender(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft')
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='created_tenders')
     created_at = models.DateTimeField(auto_now_add=True)
+
+    submission_mode = models.CharField(
+        max_length=20,
+        choices=[('ONE_ENVELOPE', 'Single-stage, one-envelope'),
+                 ('TWO_ENVELOPE', 'Single-stage, two-envelope')],
+        default='TWO_ENVELOPE'
+    )
     required_documents = ArrayField(
         models.CharField(max_length=50),
         default=list,

@@ -45,7 +45,8 @@ class Bid(models.Model):
 
 class BidDocument(models.Model):
     DOCUMENT_TYPE_CHOICES = [
-        ('BID', 'BID'),
+        ('TECHNICAL_PROPOSAL', 'Technical Proposal'),
+        ('FINANCIAL_PROPOSAL', 'Financial Proposal'),
         ('CAC', 'CAC'),
         ('TIN', 'TIN'),
         ('TCC', 'TCC'),

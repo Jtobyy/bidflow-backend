@@ -17,6 +17,7 @@ from io import BytesIO
 from django.urls import reverse
 from rest_framework.decorators import api_view
 from rest_framework import filters
+from django.db import transaction
 
 
 class TenderViewSet(viewsets.ModelViewSet):
@@ -42,6 +43,37 @@ class TenderViewSet(viewsets.ModelViewSet):
             message=f"Tender '{tender.title}' was created successfully.",
             data={"type": "tender_created", "tender_id": tender.id}
         )
+
+    @action(detail=True, methods=['post'], url_path='duplicate')
+    def duplicate(self, request, pk=None):
+        """Create a copy of a tender as DRAFT, owned by current user."""
+        original = self.get_object()
+
+        # List the simple fields you want to copy over
+        clone_fields = {
+            'title': f'{original.title} (Copy)',
+            'description': original.description,
+            'deadline': original.deadline,  # or None if you want them to set it again
+            'status': 'draft',
+            'submission_mode': getattr(original, 'submission_mode', 'TWO_ENVELOPE'),
+            'required_documents': getattr(original, 'required_documents', []),
+        }
+
+        with transaction.atomic():
+            clone = Tender.objects.create(
+                created_by=request.user,
+                **clone_fields
+            )
+
+            # OPTIONAL: copy files by reference (not duplicating bytes)
+            # if hasattr(original, 'tender_document') and original.tender_document:
+            #     clone.tender_document = original.tender_document
+            #     clone.save(update_fields=['tender_document'])
+
+            # OPTIONAL: if you have related "extra documents" records, clone them here.
+
+        serializer = self.get_serializer(clone)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=["post"], url_path="process_bids")
     def process_bids(self, request, pk=None):

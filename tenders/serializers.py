@@ -9,11 +9,16 @@ class TenderSerializer(serializers.ModelSerializer):
     compliant_bids = serializers.SerializerMethodField()
     bid_scores = serializers.SerializerMethodField()
     created_by = UserSerializer(read_only=True)
+    has_submitted_bid = serializers.SerializerMethodField()
+    my_bid_id = serializers.SerializerMethodField()
 
     class Meta:
         model = Tender
         fields = '__all__'
-        read_only_fields = ['total_bids', 'compliant_bids', 'bid_scores', 'created_by']
+        read_only_fields = [
+            'total_bids', 'compliant_bids', 'bid_scores', 'created_by',
+            'has_submitted_bid', 'my_bid_id'
+        ]
 
     def get_total_bids(self, obj):
         return obj.bids.count()
@@ -33,3 +38,20 @@ class TenderSerializer(serializers.ModelSerializer):
             }
             for bid in bids
         ]
+    
+    def get_has_submitted_bid(self, obj):
+        user = self.context.get('request', None)
+        if user and hasattr(user, 'user'):
+            user = user.user  # For DRF Request
+        if user and user.is_authenticated:
+            return Bid.objects.filter(tender=obj, submitted_by=user).exists()
+        return False
+
+    def get_my_bid_id(self, obj):
+        user = self.context.get('request', None)
+        if user and hasattr(user, 'user'):
+            user = user.user
+        if user and user.is_authenticated:
+            bid = Bid.objects.filter(tender=obj, submitted_by=user).first()
+            return bid.id if bid else None
+        return None
